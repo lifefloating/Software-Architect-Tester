@@ -8,6 +8,7 @@ const config = {
     override: {
       wrapper: "cloudflare-node",
       converter: "edge",
+      proxyExternalRequest: "fetch",
       // 使用 dummy 缓存替代 KV 缓存
       incrementalCache: "dummy",
       tagCache: "dummy",
