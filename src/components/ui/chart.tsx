@@ -69,7 +69,7 @@ ChartContainer.displayName = "Chart"
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
-    ([, config]) => config.theme || config.color
+    ([_, config]) => config.theme || config.color
   )
 
   if (!colorConfig.length) {
@@ -260,14 +260,19 @@ const ChartLegend = RechartsPrimitive.Legend
 
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"div"> &
-    Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
-      hideIcon?: boolean
-      nameKey?: string
-    }
+  React.ComponentProps<"div"> & Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+    hideIcon?: boolean
+    nameKey?: string
+  }
 >(
   (
-    { className, hideIcon = false, payload, verticalAlign = "bottom", nameKey },
+    {
+      className,
+      hideIcon = false,
+      payload,
+      verticalAlign = "bottom",
+      nameKey,
+    },
     ref
   ) => {
     const { config } = useChart()
@@ -286,7 +291,7 @@ const ChartLegendContent = React.forwardRef<
         )}
       >
         {payload.map((item) => {
-          const key = `${nameKey || item.dataKey || "value"}`
+          const key = `${nameKey || item.value}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
 
           return (
@@ -299,12 +304,14 @@ const ChartLegendContent = React.forwardRef<
               {itemConfig?.icon && !hideIcon ? (
                 <itemConfig.icon />
               ) : (
-                <div
-                  className="h-2 w-2 shrink-0 rounded-[2px]"
-                  style={{
-                    backgroundColor: item.color,
-                  }}
-                />
+                !hideIcon && (
+                  <div
+                    className="h-2 w-2 shrink-0 rounded-[2px]"
+                    style={{
+                      backgroundColor: item.color,
+                    }}
+                  />
+                )
               )}
               {itemConfig?.label}
             </div>
@@ -316,43 +323,32 @@ const ChartLegendContent = React.forwardRef<
 )
 ChartLegendContent.displayName = "ChartLegend"
 
-// Helper to extract item config from a payload.
+// Helper to extract item config from payload
+type Payload = {
+  [key: string]: unknown
+}
 function getPayloadConfigFromPayload(
   config: ChartConfig,
-  payload: unknown,
+  payload: Payload,
   key: string
 ) {
   if (typeof payload !== "object" || payload === null) {
     return undefined
   }
 
-  const payloadPayload =
-    "payload" in payload &&
-    typeof payload.payload === "object" &&
-    payload.payload !== null
-      ? payload.payload
-      : undefined
-
-  let configLabelKey: string = key
-
-  if (
-    key in payload &&
-    typeof payload[key as keyof typeof payload] === "string"
-  ) {
-    configLabelKey = payload[key as keyof typeof payload] as string
-  } else if (
-    payloadPayload &&
-    key in payloadPayload &&
-    typeof payloadPayload[key as keyof typeof payloadPayload] === "string"
-  ) {
-    configLabelKey = payloadPayload[
-      key as keyof typeof payloadPayload
-    ] as string
+  if (config[key as keyof typeof config]) {
+    return config[key as keyof typeof config]
   }
 
-  return configLabelKey in config
-    ? config[configLabelKey]
-    : config[key as keyof typeof config]
+  if (config[payload.name as keyof typeof config]) {
+    return config[payload.name as keyof typeof config]
+  }
+
+  if (config[payload.dataKey as keyof typeof config]) {
+    return config[payload.dataKey as keyof typeof config]
+  }
+
+  return Object.entries(config).find(([_, c]) => c.label === payload.name)?.[1]
 }
 
 export {
